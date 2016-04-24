@@ -52,7 +52,12 @@ class YesBot(telepot.async.helper.UserHandler):
 
             return articles
 
-        self._answerer.answer(msg, compute_answer)
+        try:
+            self._answerer.answer(msg, compute_answer)
+        except Exception as e:
+            print(msg)
+            print(e)
+            print(articles)
 
     # override default on_chosen_inline_result
     def on_chosen_inline_result(self, msg):
