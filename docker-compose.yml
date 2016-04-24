@@ -1,0 +1,5 @@
+bot:
+  build: bot
+  restart: always
+  environment:
+    - TELEGRAM_API_KEY
