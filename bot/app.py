@@ -4,7 +4,7 @@ import asyncio
 from collections import OrderedDict
 
 import telepot
-from telepot.async.delegate import per_chat_id, create_open
+from telepot.async.delegate import per_message, create_open
 
 
 translations = OrderedDict([
@@ -24,40 +24,38 @@ class YesBot(telepot.async.helper.UserHandler):
         def compute_answer():
             query_string = telepot.glance(msg, flavor='inline_query')[2]
 
+            if query_string:
+                tokens = ['*', '_', '```', '`']
+
+                for token in tokens:
+                    if query_string.count(token) % 2 != 0:
+                        partitions = query_string.rpartition(token)
+                        query_string = partitions[0] + partitions[2]
+
             articles = []
 
             num_random_answer = random.choice(range(3))
 
             for translation_id, translation in translations.items():
+                article = {'type': 'article', 'id': translation_id.lower(), 'title': translation_id, 'parse_mode': 'markdown',
+                           'thumb_url': translation['image']}
+
                 if query_string:
-                    articles.append({
-                        'type': 'article',
-                        'id': translation_id.lower(),
-                        'title': translation_id,
+                    article.update({
                         'description': '«{0}» - {1}'.format(query_string, translation['words'][num_random_answer]),
-                        'message_text': '«{0}» - *{1}*'.format(query_string, translation['words'][num_random_answer]),
-                        'parse_mode': 'markdown',
-                        'thumb_url': translation['image']
+                        'message_text': '«{0}» - *{1}*'.format(query_string, translation['words'][num_random_answer])
                     })
                 else:
-                    articles.append({
-                        'type': 'article',
-                        'id': translation_id.lower(),
-                        'title': translation_id,
+                    article.update({
                         'description': '{0}'.format(translation['words'][num_random_answer]),
-                        'message_text': '*{0}*'.format(translation['words'][num_random_answer]),
-                        'parse_mode': 'markdown',
-                        'thumb_url': translation['image']
+                        'message_text': '*{0}*'.format(translation['words'][num_random_answer])
                     })
+
+                articles.append(article)
 
             return articles
 
-        try:
-            self._answerer.answer(msg, compute_answer)
-        except Exception as e:
-            print(msg)
-            print(e)
-            print(articles)
+        self._answerer.answer(msg, compute_answer)
 
     # override default on_chosen_inline_result
     def on_chosen_inline_result(self, msg):
@@ -75,11 +73,12 @@ class YesBot(telepot.async.helper.UserHandler):
 ACCESS_TOKEN = os.getenv('TELEGRAM_API_KEY')
 
 bot = telepot.async.DelegatorBot(ACCESS_TOKEN, [
-    (per_chat_id(), create_open(YesBot, timeout=5*60)),
+    (per_message(), create_open(YesBot, timeout=0)),
 ])
 loop = asyncio.get_event_loop()
 
 loop.create_task(bot.message_loop())
+
 print('Started!')
 
 loop.run_forever()
